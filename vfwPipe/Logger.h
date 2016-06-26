@@ -1,3 +1,5 @@
+//Simple Logger class for Debug purposes taken from: https://wiki.calculquebec.ca/w/C%2B%2B_:_classe_Logger/en (and slightly modified)
+
 #pragma once
 
 #include <string>
