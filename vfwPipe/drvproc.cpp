@@ -59,23 +59,17 @@ LRESULT WINAPI DriverProc(DWORD_PTR dwDriverId, HDRVR hDriver, UINT uMsg, LONG l
 
 	switch (uMsg) {
 	case DRV_LOAD:
-#ifdef _DEBUG
-		Logger::Start(Logger::DEBUG, "D:\\vfwPipeLog.txt");
-		Logger::Write(Logger::INFO, "DRV_LOAD");
-#endif
+		LOG_START;
+		LOG_INFO("DRV_LOAD");
 		return DRV_OK;
 	case DRV_FREE:
-#ifdef _DEBUG
-		Logger::Write(Logger::INFO, "DRV_CLOSE");
-		Logger::Stop();
-#endif
+		LOG_INFO("DRV_FREE");
+		LOG_STOP;
 		return DRV_OK;
 
 	case DRV_OPEN:
 	{
-#ifdef _DEBUG
-		Logger::Write(Logger::INFO, "DRV_OPEN");
-#endif
+		LOG_INFO("DRV_OPEN");
 		ICOPEN *ico = (ICOPEN*)lParam2;
 
 		if (ico && ico->fccType != ICTYPE_VIDEO)
@@ -109,9 +103,8 @@ LRESULT WINAPI DriverProc(DWORD_PTR dwDriverId, HDRVR hDriver, UINT uMsg, LONG l
 
 	case ICM_GETINFO:
 	{
-#ifdef _DEBUG
-		Logger::Write(Logger::INFO, "ICM_GETINFO");
-#endif
+		LOG_INFO("ICM_GETINFO");
+
 		ICINFO* icinfo = (ICINFO *)lParam1;
 
 		if (lParam2 < sizeof(ICINFO))
@@ -131,25 +124,22 @@ LRESULT WINAPI DriverProc(DWORD_PTR dwDriverId, HDRVR hDriver, UINT uMsg, LONG l
 	}
 
 	case ICM_ABOUT:
-#ifdef _DEBUG
-		Logger::Write(Logger::INFO, "ICM_ABOUT");
-#endif
+		LOG_INFO("ICM_ABOUT");
+
 		if (lParam1 != -1)
 			ph->aboutDlg((HWND)lParam1);
 		return ICERR_OK;
 	
 	case ICM_CONFIGURE:
-#ifdef _DEBUG
-		Logger::Write(Logger::INFO, "ICM_CONFIGURE");
-#endif
+		LOG_INFO("ICM_CONFIGURE");
+
 		if (lParam1 != -1)
 			ph->configDlg((HWND)lParam1);
 		return ICERR_OK;
 
 	case ICM_GETSTATE:
-#ifdef _DEBUG
-		Logger::Write(Logger::INFO, "ICM_GETSTATE");
-#endif
+		LOG_INFO("ICM_GETSTATE");
+
 		if (lParam2 == NULL)
 			return sizeof(pipeSettings);
 		else {
@@ -163,18 +153,16 @@ LRESULT WINAPI DriverProc(DWORD_PTR dwDriverId, HDRVR hDriver, UINT uMsg, LONG l
 		return ICERR_OK;
 
 	case ICM_SETSTATE:
-#ifdef _DEBUG
-		Logger::Write(Logger::INFO, "ICM_SETSTATE");
-#endif
+		LOG_INFO("ICM_SETSTATE");
+
 		if (lParam1 == NULL)
 			ph->setToDefault();
 		memcpy((void*)ph->settings, (void*)lParam1, sizeof(pipeSettings));
 		return ICERR_OK;
 
 	case ICM_GET:
-#ifdef _DEBUG
-		Logger::Write(Logger::INFO, "ICM_GET");
-#endif
+		LOG_INFO("ICM_GET");
+
 		if (!(void *)lParam1)
 			return 0;
 		return ICERR_OK;
@@ -196,15 +184,13 @@ LRESULT WINAPI DriverProc(DWORD_PTR dwDriverId, HDRVR hDriver, UINT uMsg, LONG l
 		return ICERR_UNSUPPORTED;
 
 	case ICM_COMPRESS:
-#ifdef _DEBUG
-		Logger::Write(Logger::INFO, "ICM_COMPRESS");
-#endif
+		LOG_INFO("ICM_COMPRESS");
+
 		return ph->sendToStdout((ICCOMPRESS*)lParam1, (size_t)lParam2);
 
 	case ICM_COMPRESS_QUERY:
-#ifdef _DEBUG
-		Logger::Write(Logger::INFO, "ICM_COMPRESS_QUERY");
-#endif
+		LOG_INFO("ICM_COMPRESS_QUERY");
+
 		{
 			BITMAPINFO* bmi = (BITMAPINFO*)lParam1;
 			if (ph->getImageSize(&bmi->bmiHeader) == -1)
@@ -214,34 +200,29 @@ LRESULT WINAPI DriverProc(DWORD_PTR dwDriverId, HDRVR hDriver, UINT uMsg, LONG l
 		}
 
 	case ICM_COMPRESS_BEGIN:
-#ifdef _DEBUG
-		Logger::Write(Logger::INFO, "ICM_COMPRESS_BEGIN");
-#endif
+		LOG_INFO("ICM_COMPRESS_BEGIN");
+
 		return ph->establishPipe();
 
 	case ICM_COMPRESS_END:
-#ifdef _DEBUG
-		Logger::Write(Logger::INFO, "ICM_COMPRESS_END");
-#endif
-		return ph->closePipe();
+		LOG_INFO("ICM_COMPRESS_END");
 
+		return ph->closePipe();
+		
 	case ICM_COMPRESS_GET_FORMAT:
-#ifdef _DEBUG
-		Logger::Write(Logger::INFO, "ICM_COMPRESS_GET_FORMAT");
-#endif
+		LOG_INFO("ICM_COMPRESS_GET_FORMAT");
+
 		return ph->getFormat((BITMAPINFO*)lParam1, (BITMAPINFO*)lParam2);
 
 	case ICM_COMPRESS_GET_SIZE:
-#ifdef _DEBUG
-		Logger::Write(Logger::INFO, "ICM_COMPRESS_GET_SIZE");
-#endif
+		LOG_INFO("ICM_COMPRESS_GET_SIZE");
+
 		//return ph->getSize((BITMAPINFO*)lParam1, (BITMAPINFO*)lParam2);
 		return LOG_SIZE;
 
 	case ICM_COMPRESS_FRAMES_INFO:
-#ifdef _DEBUG
-		Logger::Write(Logger::INFO, "ICM_COMPRESS_FRAMES_INFO");
-#endif
+		LOG_INFO("ICM_COMPRESS_FRAMES_INFO");
+
 		return ICERR_OK;
 
 	case ICM_DECOMPRESS:

@@ -51,16 +51,16 @@ void pipeHandler::setToDefault()
 {
 	wcscpy_s(settings->cmdLineArgs, VFWPIPE_DEFAULT_CMD_ARGS);
 	wcscpy_s(settings->encoderPath, VFWPIPE_DEFAULT_ENCODER);
+	settings->openNewWindow = true;
 }
 
 INT_PTR CALLBACK pipeHandler::ConfigDialog(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
 {
-	
-
 	switch (uMsg) {
 	case WM_INITDIALOG:
 		SetDlgItemText(hwndDlg, cmdLineArgsTxt, this->settings->cmdLineArgs);
 		SetDlgItemText(hwndDlg, applicationPathTxt, this->settings->encoderPath);
+		CheckDlgButton(hwndDlg, openInNewWndwBox, (this->settings->openNewWindow) ? BST_CHECKED : BST_UNCHECKED);
 		break;
 	case WM_CLOSE:
 		EndDialog(hwndDlg, WM_CLOSE);
@@ -68,10 +68,19 @@ INT_PTR CALLBACK pipeHandler::ConfigDialog(HWND hwndDlg, UINT uMsg, WPARAM wPara
 	case WM_COMMAND:
 		switch (LOWORD(wParam)) {
 		case IDOK:
+		{
 			GetDlgItemText(hwndDlg, cmdLineArgsTxt, this->settings->cmdLineArgs, 2048);
 			GetDlgItemText(hwndDlg, applicationPathTxt, this->settings->encoderPath, MAX_PATH);
+
+			UINT chckBoxState = IsDlgButtonChecked(hwndDlg, openInNewWndwBox);
+			if (chckBoxState == BST_CHECKED)
+				this->settings->openNewWindow = true;
+			else
+				this->settings->openNewWindow = false;
+
 			EndDialog(hwndDlg, IDOK);
-			break;
+		}
+		break;
 		case IDCANCEL:
 			EndDialog(hwndDlg, IDCANCEL);
 			break;
@@ -122,26 +131,6 @@ LRESULT pipeHandler::sendToStdout(ICCOMPRESS * icc, size_t icc_size)
 	icc->lpbiOutput->biSizeImage = LOG_SIZE;
 	*icc->lpdwFlags = AVIIF_KEYFRAME;
 
-//#ifdef _DEBUG
-//	HANDLE bitmapOut = INVALID_HANDLE_VALUE;
-//	std::wostringstream strStream;
-//	strStream << Helper::replaceEnvVars(L"%USERPROFILE%\\Bitmap") << this->framesCompressed++ << L".bmp";
-//
-//	bitmapOut = CreateFile(Helper::replaceEnvVars(L"%USERPROFILE%\\vfwPipeStdErr.txt").c_str(),
-//		FILE_APPEND_DATA,
-//		FILE_SHARE_WRITE | FILE_SHARE_READ,
-//		NULL,
-//		CREATE_ALWAYS,
-//		FILE_ATTRIBUTE_NORMAL,
-//		NULL);
-//
-//	if (bitmapOut != INVALID_HANDLE_VALUE) {
-//		WriteFile(bitmapOut, icc->lpInput, size, NULL, NULL);
-//
-//		CloseHandle(bitmapOut);
-//	}
-//#endif
-
 	DWORD bytesWritten;
 
 	if (!WriteFile(this->pipe, icc->lpInput, size, &bytesWritten, NULL)) {
@@ -153,9 +142,7 @@ LRESULT pipeHandler::sendToStdout(ICCOMPRESS * icc, size_t icc_size)
 		_com_error error(dwErr);
 		std::wstring msg(error.ErrorMessage());
 
-#ifdef _DEBUG
-		Logger::Write(Logger::ERR, Helper::ws2s(msg).c_str());
-#endif
+		LOG_ERROR(Helper::ws2s(msg).c_str());
 
 		MessageBox(0, msg.c_str(), L"Error", MB_OK | MB_ICONERROR);
 
@@ -227,13 +214,15 @@ LRESULT pipeHandler::establishPipe()
 		wchar_t tmpBuffer[2048 + MAX_PATH];
 		wcscpy_s(tmpBuffer, cmdLineStream.str().c_str());
 
+		DWORD creationFlags = (this->settings->openNewWindow) ? CREATE_NEW_CONSOLE : CREATE_NO_WINDOW;
+
 		if (!CreateProcess(
 			NULL,
 			tmpBuffer,
 			NULL,
 			NULL,
 			TRUE,
-			CREATE_NO_WINDOW,
+			creationFlags,
 			NULL,
 			NULL,
 			&si,
@@ -255,11 +244,9 @@ LRESULT pipeHandler::establishPipe()
 
 		CloseHandle(c_in);
 
-#ifdef _DEBUG
 		std::wostringstream strStream;
 		strStream << L"Established Pipe with cmdLine \"" << tmpBuffer << L"\"";
-		Logger::Write(Logger::INFO, Helper::ws2s(strStream.str()).c_str());
-#endif
+		LOG_INFO(Helper::ws2s(strStream.str()).c_str());
 
 		return ICERR_OK;
 	}
@@ -275,10 +262,9 @@ LRESULT pipeHandler::establishPipe()
 
 		MessageBox(0, msg.c_str(), L"Error", MB_OK | MB_ICONERROR);
 
-#ifdef _DEBUG
-		Logger::Write(Logger::ERR, Helper::ws2s(msg).c_str());
-#endif
-		return ICERR_BADFORMAT;
+		LOG_ERROR(Helper::ws2s(msg).c_str());
+
+		return ICERR_ERROR;
 	}
 }
 
@@ -315,20 +301,25 @@ LRESULT pipeHandler::getSize(BITMAPINFO * in, BITMAPINFO * out)
 
 LRESULT pipeHandler::closePipe()
 {
-	if (this->hThread == INVALID_HANDLE_VALUE)
+	try {
+		if (this->hThread == INVALID_HANDLE_VALUE)
+			return ICERR_OK;
+
+		CloseHandle(this->pipe);
+		CloseHandle(this->f_out);
+		CloseHandle(this->f_err);
+
+		while (WaitForSingleObject(this->hProc, INFINITE));
+		CloseHandle(this->hProc);
+		CloseHandle(this->hThread);
+
+
+		this->pipe = NULL;
+		this->hProc = this->hThread = NULL;
+	}
+	catch (...) {
 		return ICERR_OK;
-
-	CloseHandle(this->pipe);
-	CloseHandle(this->f_out);
-	CloseHandle(this->f_err);
-
-	while (WaitForSingleObject(this->hProc, INFINITE));
-	CloseHandle(this->hProc);
-	CloseHandle(this->hThread);
-
-
-	this->pipe = NULL;
-	this->hProc = this->hThread = NULL;
+	}
 
 	return ICERR_OK;
 }

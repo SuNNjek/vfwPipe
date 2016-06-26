@@ -44,6 +44,7 @@
 #define BUFFER_SIZE 256
 
 struct pipeSettings {
+	bool openNewWindow;
 	wchar_t encoderPath[MAX_PATH];
 	wchar_t cmdLineArgs[2048];
 };

@@ -8,6 +8,19 @@
 #include <ctime>
 #include <iomanip>
 
+#include "Helper.h"
+
+#define LOG_INFO(msg) Logger::Write(Logger::INFO, msg)
+#define LOG_ERROR(msg) Logger::Write(Logger::ERR, msg)
+#define LOG_STOP Logger::Stop()
+
+#ifdef _DEBUG
+#define LOG_START Logger::Start(Logger::DEBUG, Helper::ws2s(Helper::replaceEnvVars(L"%USERPROFILE%\\vfwPipeLog.txt")))
+#else
+#define LOG_START Logger::Start(Logger::WARNING, Helper::ws2s(Helper::replaceEnvVars(L"%USERPROFILE%\\vfwPipeLog.txt")))
+#endif
+
+
 class Logger
 {
 public:
