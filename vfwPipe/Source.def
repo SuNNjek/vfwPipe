@@ -1,0 +1,7 @@
+LIBRARY VFWPIPE
+
+EXPORTS
+	DriverProc
+	DllMain
+	aboutDlg
+	configDlg
