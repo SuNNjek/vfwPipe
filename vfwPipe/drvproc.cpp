@@ -201,13 +201,17 @@ LRESULT WINAPI DriverProc(DWORD_PTR dwDriverId, HDRVR hDriver, UINT uMsg, LONG l
 
 	case ICM_COMPRESS_BEGIN:
 		LOG_INFO("ICM_COMPRESS_BEGIN");
+		if (!ph->checkFormat((LPBITMAPINFO)lParam1))
+			return ICERR_BADFORMAT;
 
 		return ph->establishPipe();
 
 	case ICM_COMPRESS_END:
+	{
 		LOG_INFO("ICM_COMPRESS_END");
 
 		return ph->closePipe();
+	}
 		
 	case ICM_COMPRESS_GET_FORMAT:
 		LOG_INFO("ICM_COMPRESS_GET_FORMAT");

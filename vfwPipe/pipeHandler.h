@@ -74,8 +74,10 @@ public:
 	LRESULT getFormat(BITMAPINFO* in, BITMAPINFO* out);
 	LRESULT getSize(BITMAPINFO* in, BITMAPINFO* out);
 	LRESULT closePipe();
+	bool checkFormat(LPBITMAPINFO inFormat);
 
 	LONG getImageSize(BITMAPINFOHEADER* bmi);
+	static BYTE* bmpToRGB(BYTE* buffer, DWORD width, DWORD height);
 
 	INT_PTR CALLBACK ConfigDialog(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM lParam);
 

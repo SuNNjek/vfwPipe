@@ -49,6 +49,8 @@ void pipeHandler::configDlg(HWND parent) {
 
 void pipeHandler::setToDefault()
 {
+	ZeroMemory(this->settings, sizeof(pipeSettings));
+
 	wcscpy_s(settings->cmdLineArgs, VFWPIPE_DEFAULT_CMD_ARGS);
 	wcscpy_s(settings->encoderPath, VFWPIPE_DEFAULT_ENCODER);
 	settings->openNewWindow = true;
@@ -115,25 +117,19 @@ INT_PTR CALLBACK pipeHandler::ConfigDialog(HWND hwndDlg, UINT uMsg, WPARAM wPara
 
 LRESULT pipeHandler::sendToStdout(ICCOMPRESS * icc, size_t icc_size)
 {
-	//wchar_t* buffer1 = (wchar_t*)malloc(sizeof(wchar_t) * 1024);
-	//wsprintf(buffer1, L"this->pipe = %p", this->pipe);
-	//MessageBox(0, buffer1, L"lol", 0);
-	//free(buffer1);
-	
-	//assert(this->pipe != nullptr);
-	
 	LONG size = icc->lpbiInput->biSizeImage;
 	if (size < 0) {
-		closePipe();
 		return ICERR_BADFORMAT;
 	}
 
 	icc->lpbiOutput->biSizeImage = LOG_SIZE;
 	*icc->lpdwFlags = AVIIF_KEYFRAME;
 
+	BYTE* newInput = bmpToRGB((BYTE*)icc->lpInput, icc->lpbiInput->biWidth, icc->lpbiInput->biHeight);
+
 	DWORD bytesWritten;
 
-	if (!WriteFile(this->pipe, icc->lpInput, size, &bytesWritten, NULL)) {
+	if (!WriteFile(this->pipe, newInput, size, &bytesWritten, NULL)) {
 		DWORD dwErr = 0;
 		if (!GetExitCodeProcess(this->hProc, &dwErr) || dwErr != STILL_ACTIVE) {
 			dwErr = GetLastError();
@@ -147,9 +143,12 @@ LRESULT pipeHandler::sendToStdout(ICCOMPRESS * icc, size_t icc_size)
 		MessageBox(0, msg.c_str(), L"Error", MB_OK | MB_ICONERROR);
 
 		closePipe();
+		free(newInput);
 
 		return ICERR_ERROR;
 	}
+
+	free(newInput);
 
 	wchar_t* buffer = (wchar_t*)malloc(LOG_SIZE);
 	wsprintf(buffer, L"Frame %d written, %d Bytes written", icc->lFrameNum, bytesWritten);
@@ -302,26 +301,41 @@ LRESULT pipeHandler::getSize(BITMAPINFO * in, BITMAPINFO * out)
 LRESULT pipeHandler::closePipe()
 {
 	try {
-		if (this->hThread == INVALID_HANDLE_VALUE)
-			return ICERR_OK;
+		if(this->pipe != INVALID_HANDLE_VALUE)
+			CloseHandle(this->pipe);
+		if(this->f_out != INVALID_HANDLE_VALUE)
+			CloseHandle(this->f_out);
+		if(this->f_err != INVALID_HANDLE_VALUE)
+			CloseHandle(this->f_err);
 
-		CloseHandle(this->pipe);
-		CloseHandle(this->f_out);
-		CloseHandle(this->f_err);
+		if (this->hProc != INVALID_HANDLE_VALUE) {
+			DWORD exitCode;
+			do {
+				GetExitCodeProcess(this->hProc, &exitCode);
+			} while (exitCode == STILL_ACTIVE);
+		}
 
-		while (WaitForSingleObject(this->hProc, INFINITE));
-		CloseHandle(this->hProc);
-		CloseHandle(this->hThread);
-
-
-		this->pipe = NULL;
-		this->hProc = this->hThread = NULL;
+		if (this->hThread != INVALID_HANDLE_VALUE) {
+			TerminateThread(this->hThread, 0);
+			CloseHandle(this->hThread);
+		}
+	
+		this->pipe = INVALID_HANDLE_VALUE;
+		this->hProc = this->hThread = INVALID_HANDLE_VALUE;
 	}
 	catch (...) {
 		return ICERR_OK;
 	}
 
 	return ICERR_OK;
+}
+
+bool pipeHandler::checkFormat(LPBITMAPINFO inFormat)
+{
+	if (inFormat->bmiHeader.biBitCount != 24 || inFormat->bmiHeader.biCompression != BI_RGB)
+		return false;
+
+	return true;
 }
 
 LONG pipeHandler::getImageSize(BITMAPINFOHEADER * bmi)
@@ -341,6 +355,34 @@ LONG pipeHandler::getImageSize(BITMAPINFOHEADER * bmi)
 	}
 	// only BI_RGB allows non-specified size?
 	return -1;
+}
+
+//REMEMBER DELETE[]-ING THE ALLOCATED BUFFER AFTERWARDS TO AVOID MEMORY LEAKS
+BYTE * pipeHandler::bmpToRGB(BYTE * buffer, DWORD width, DWORD height)
+{
+	if (buffer == NULL || width == 0 || height == 0)
+		return NULL;
+
+	//Calculate stride assuming bit depth of 24 bpp
+	DWORD stride = ((((width * 24) + 31) & ~31) >> 3);
+
+	BYTE* newBuffer = (BYTE*)malloc(3 * width * height * sizeof(BYTE));
+
+	DWORD bufpos = 0;
+	DWORD newpos = 0;
+	for (DWORD y = 0; y < height; y++) {
+		for (DWORD x = 0; x < 3 * width; x += 3)
+		{
+			newpos = y * 3 * width + x;
+			bufpos = (height - y - 1) * stride + x;
+
+			newBuffer[newpos] = buffer[bufpos + 2];
+			newBuffer[newpos + 1] = buffer[bufpos + 1];
+			newBuffer[newpos + 2] = buffer[bufpos];
+		}
+	}
+
+	return newBuffer;
 }
 
 INT_PTR CALLBACK ConfigDialog(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM lParam) {
