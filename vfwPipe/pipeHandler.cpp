@@ -40,7 +40,7 @@ pipeHandler::~pipeHandler()
 }
 
 void pipeHandler::aboutDlg(HWND parent) {
-	MessageBox(parent, L"vfwPipe v1.0.0 by Sunner (sunnerlp@gmail.com)", L"About vfwPipe", MB_OK | MB_ICONINFORMATION);
+	MessageBox(parent, L"vfwPipe v1.0.0 by SuNNjek (sunnerlp@gmail.com)", L"About vfwPipe", MB_OK | MB_ICONINFORMATION);
 }
 
 void pipeHandler::configDlg(HWND parent) {
@@ -53,6 +53,7 @@ void pipeHandler::setToDefault()
 
 	wcscpy_s(settings->cmdLineArgs, VFWPIPE_DEFAULT_CMD_ARGS);
 	wcscpy_s(settings->encoderPath, VFWPIPE_DEFAULT_ENCODER);
+	wcscpy_s(settings->encoderPath, L"output.mkv");
 	settings->openNewWindow = true;
 }
 
@@ -62,6 +63,7 @@ INT_PTR CALLBACK pipeHandler::ConfigDialog(HWND hwndDlg, UINT uMsg, WPARAM wPara
 	case WM_INITDIALOG:
 		SetDlgItemText(hwndDlg, cmdLineArgsTxt, this->settings->cmdLineArgs);
 		SetDlgItemText(hwndDlg, applicationPathTxt, this->settings->encoderPath);
+		SetDlgItemText(hwndDlg, outputPathTxt, this->settings->outputPath);
 		CheckDlgButton(hwndDlg, openInNewWndwBox, (this->settings->openNewWindow) ? BST_CHECKED : BST_UNCHECKED);
 		break;
 	case WM_CLOSE:
@@ -73,6 +75,7 @@ INT_PTR CALLBACK pipeHandler::ConfigDialog(HWND hwndDlg, UINT uMsg, WPARAM wPara
 		{
 			GetDlgItemText(hwndDlg, cmdLineArgsTxt, this->settings->cmdLineArgs, 2048);
 			GetDlgItemText(hwndDlg, applicationPathTxt, this->settings->encoderPath, MAX_PATH);
+			GetDlgItemText(hwndDlg, outputPathTxt, this->settings->outputPath, MAX_PATH);
 
 			UINT chckBoxState = IsDlgButtonChecked(hwndDlg, openInNewWndwBox);
 			if (chckBoxState == BST_CHECKED)
@@ -86,24 +89,54 @@ INT_PTR CALLBACK pipeHandler::ConfigDialog(HWND hwndDlg, UINT uMsg, WPARAM wPara
 		case IDCANCEL:
 			EndDialog(hwndDlg, IDCANCEL);
 			break;
-		case FileChooserBtn:
+		case IDHELP:
+			MessageBox(hwndDlg, L"The command line automatically replaces [[width]], [[height]] and [[output]]\nwith the video width and height (in pixels) and the output file path", L"Command line help", MB_OK | MB_ICONQUESTION);
+			break;
+		case EncoderChooserBtn:
 			{
 				wchar_t tmpFilepath[MAX_PATH];
 
-				OPENFILENAMEW ofn;
 				ZeroMemory(tmpFilepath, MAX_PATH * sizeof(wchar_t));
+
+				GetDlgItemText(hwndDlg, applicationPathTxt, tmpFilepath, MAX_PATH);
+
+				OPENFILENAMEW ofn;
 				ZeroMemory(&ofn, sizeof(OPENFILENAMEW));
 
 				ofn.lStructSize = sizeof(OPENFILENAMEW);
 				ofn.hwndOwner = hwndDlg;
-				ofn.lpstrFilter = L".exe-Dateien\0*.exe\0Alle Dateien\0*.*";
+				ofn.lpstrFilter = L".exe files\0*.exe\0All files\0*.*\0\0";
 				ofn.lpstrFile = tmpFilepath;
 				ofn.nMaxFile = MAX_PATH;
-				ofn.lpstrTitle = L"Encoder auswählen";
+				ofn.lpstrTitle = L"Choose encoder";
 				ofn.Flags = OFN_DONTADDTORECENT | OFN_FILEMUSTEXIST;
 
 				if (GetOpenFileName(&ofn)) {
 					SetDlgItemText(hwndDlg, applicationPathTxt, tmpFilepath);
+				}
+			}
+			break;
+		case outfileBtn:
+			{
+				wchar_t tmpFilepath[MAX_PATH];
+				ZeroMemory(tmpFilepath, MAX_PATH * sizeof(wchar_t));
+
+				GetDlgItemText(hwndDlg, outputPathTxt, tmpFilepath, MAX_PATH);
+
+				OPENFILENAMEW ofn;
+				ZeroMemory(&ofn, sizeof(OPENFILENAMEW));
+
+				ofn.lStructSize = sizeof(OPENFILENAMEW);
+				ofn.hwndOwner = hwndDlg;
+				ofn.lpstrFilter = L"Matroska files\0*.mkv\0MPEG-4 files\0*.mp4\0All Files\0*.*\0\0";
+				ofn.lpstrDefExt = L"mkv";
+				ofn.lpstrFile = tmpFilepath;
+				ofn.nMaxFile = MAX_PATH;
+				ofn.lpstrTitle = L"Output file";
+				ofn.Flags = OFN_OVERWRITEPROMPT | OFN_HIDEREADONLY;
+
+				if (GetSaveFileName(&ofn)) {
+					SetDlgItemText(hwndDlg, outputPathTxt, tmpFilepath);
 				}
 			}
 			break;
@@ -150,8 +183,8 @@ LRESULT pipeHandler::sendToStdout(ICCOMPRESS * icc, size_t icc_size)
 
 	free(newInput);
 
-	wchar_t* buffer = (wchar_t*)malloc(LOG_SIZE);
-	wsprintf(buffer, L"Frame %d written, %d Bytes written", icc->lFrameNum, bytesWritten);
+	char* buffer = (char*)malloc(LOG_SIZE);
+	sprintf_s(buffer, LOG_SIZE, "Frame %d written, %d Bytes written", icc->lFrameNum, bytesWritten);
 
 	memcpy_s(icc->lpOutput, LOG_SIZE, buffer, LOG_SIZE);
 
@@ -160,7 +193,7 @@ LRESULT pipeHandler::sendToStdout(ICCOMPRESS * icc, size_t icc_size)
 	return ICERR_OK;
 }
 
-LRESULT pipeHandler::establishPipe()
+LRESULT pipeHandler::establishPipe(LPBITMAPINFO info)
 {
 	HANDLE c_in = NULL;
 
@@ -207,9 +240,14 @@ LRESULT pipeHandler::establishPipe()
 		si.hStdError = f_err;
 		si.dwFlags = STARTF_USESTDHANDLES;
 
+		std::wstring argsString(this->settings->cmdLineArgs);
+		replaceSubstring(argsString, L"[[width]]", std::to_wstring(info->bmiHeader.biWidth));
+		replaceSubstring(argsString, L"[[height]]", std::to_wstring(info->bmiHeader.biHeight));
+		replaceSubstring(argsString, L"[[output]]", this->settings->outputPath);
+
 		std::wostringstream cmdLineStream;
 		cmdLineStream << L"\"" << this->settings->encoderPath << L"\"";
-		cmdLineStream << L" " << this->settings->cmdLineArgs;
+		cmdLineStream << L" " << argsString;
 		wchar_t tmpBuffer[2048 + MAX_PATH];
 		wcscpy_s(tmpBuffer, cmdLineStream.str().c_str());
 
@@ -239,7 +277,6 @@ LRESULT pipeHandler::establishPipe()
 
 		this->hProc = pi.hProcess;
 		this->hThread = pi.hThread;
-
 
 		CloseHandle(c_in);
 
@@ -357,7 +394,7 @@ LONG pipeHandler::getImageSize(BITMAPINFOHEADER * bmi)
 	return -1;
 }
 
-//REMEMBER DELETE[]-ING THE ALLOCATED BUFFER AFTERWARDS TO AVOID MEMORY LEAKS
+//REMEMBER TO FREE THE ALLOCATED BUFFER AFTERWARDS TO AVOID MEMORY LEAKS
 BYTE * pipeHandler::bmpToRGB(BYTE * buffer, DWORD width, DWORD height)
 {
 	if (buffer == NULL || width == 0 || height == 0)
@@ -383,6 +420,19 @@ BYTE * pipeHandler::bmpToRGB(BYTE * buffer, DWORD width, DWORD height)
 	}
 
 	return newBuffer;
+}
+
+void pipeHandler::replaceSubstring(std::wstring &input, std::wstring toReplace, std::wstring replacement)
+{
+	if (toReplace.empty() || input.empty())
+		return;
+
+	size_t currPos = 0;
+	while ((currPos = input.find(toReplace, currPos)) != std::wstring::npos)
+	{
+		input.replace(currPos, toReplace.length(), replacement);
+		currPos += replacement.length();
+	}
 }
 
 INT_PTR CALLBACK ConfigDialog(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM lParam) {

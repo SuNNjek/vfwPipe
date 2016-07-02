@@ -46,6 +46,7 @@
 struct pipeSettings {
 	bool openNewWindow;
 	wchar_t encoderPath[MAX_PATH];
+	wchar_t outputPath[MAX_PATH];
 	wchar_t cmdLineArgs[2048];
 };
 
@@ -69,7 +70,7 @@ public:
 
 	void setToDefault();
 	LRESULT sendToStdout(ICCOMPRESS* icc, size_t icc_size);
-	LRESULT establishPipe();
+	LRESULT establishPipe(LPBITMAPINFO info);
 	void setFormat(ICCOMPRESSFRAMES* iccf);
 	LRESULT getFormat(BITMAPINFO* in, BITMAPINFO* out);
 	LRESULT getSize(BITMAPINFO* in, BITMAPINFO* out);
@@ -78,6 +79,7 @@ public:
 
 	LONG getImageSize(BITMAPINFOHEADER* bmi);
 	static BYTE* bmpToRGB(BYTE* buffer, DWORD width, DWORD height);
+	static void replaceSubstring(std::wstring &input, std::wstring toReplace, std::wstring replacement);
 
 	INT_PTR CALLBACK ConfigDialog(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM lParam);
 

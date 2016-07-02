@@ -35,18 +35,8 @@ BOOL APIENTRY DllMain(HANDLE hModule, DWORD  ul_reason_for_call, LPVOID lpReserv
 	switch (ul_reason_for_call)
 	{
 	case DLL_PROCESS_ATTACH:
-#ifdef _DEBUG
-		strStream << "Dll was attached to process at address " << hModule;
-		Logger::Write(Logger::INFO, strStream.str());
-#endif
 		inst = (HINSTANCE)hModule;
 		break;
-#ifdef _DEBUG
-	case DLL_PROCESS_DETACH:
-		strStream << "Dll (at address " << inst << ") was detached from process";
-		Logger::Write(Logger::INFO, "Dll  was detached from process");
-		break;
-#endif
 	default:
 		break;
 	}
@@ -60,16 +50,13 @@ LRESULT WINAPI DriverProc(DWORD_PTR dwDriverId, HDRVR hDriver, UINT uMsg, LONG l
 	switch (uMsg) {
 	case DRV_LOAD:
 		LOG_START;
-		LOG_INFO("DRV_LOAD");
 		return DRV_OK;
 	case DRV_FREE:
-		LOG_INFO("DRV_FREE");
 		LOG_STOP;
 		return DRV_OK;
 
 	case DRV_OPEN:
 	{
-		LOG_INFO("DRV_OPEN");
 		ICOPEN *ico = (ICOPEN*)lParam2;
 
 		if (ico && ico->fccType != ICTYPE_VIDEO)
@@ -103,8 +90,6 @@ LRESULT WINAPI DriverProc(DWORD_PTR dwDriverId, HDRVR hDriver, UINT uMsg, LONG l
 
 	case ICM_GETINFO:
 	{
-		LOG_INFO("ICM_GETINFO");
-
 		ICINFO* icinfo = (ICINFO *)lParam1;
 
 		if (lParam2 < sizeof(ICINFO))
@@ -124,22 +109,16 @@ LRESULT WINAPI DriverProc(DWORD_PTR dwDriverId, HDRVR hDriver, UINT uMsg, LONG l
 	}
 
 	case ICM_ABOUT:
-		LOG_INFO("ICM_ABOUT");
-
 		if (lParam1 != -1)
 			ph->aboutDlg((HWND)lParam1);
 		return ICERR_OK;
 	
 	case ICM_CONFIGURE:
-		LOG_INFO("ICM_CONFIGURE");
-
 		if (lParam1 != -1)
 			ph->configDlg((HWND)lParam1);
 		return ICERR_OK;
 
 	case ICM_GETSTATE:
-		LOG_INFO("ICM_GETSTATE");
-
 		if (lParam2 == NULL)
 			return sizeof(pipeSettings);
 		else {
@@ -153,16 +132,12 @@ LRESULT WINAPI DriverProc(DWORD_PTR dwDriverId, HDRVR hDriver, UINT uMsg, LONG l
 		return ICERR_OK;
 
 	case ICM_SETSTATE:
-		LOG_INFO("ICM_SETSTATE");
-
 		if (lParam1 == NULL)
 			ph->setToDefault();
 		memcpy((void*)ph->settings, (void*)lParam1, sizeof(pipeSettings));
 		return ICERR_OK;
 
 	case ICM_GET:
-		LOG_INFO("ICM_GET");
-
 		if (!(void *)lParam1)
 			return 0;
 		return ICERR_OK;
@@ -184,13 +159,9 @@ LRESULT WINAPI DriverProc(DWORD_PTR dwDriverId, HDRVR hDriver, UINT uMsg, LONG l
 		return ICERR_UNSUPPORTED;
 
 	case ICM_COMPRESS:
-		LOG_INFO("ICM_COMPRESS");
-
 		return ph->sendToStdout((ICCOMPRESS*)lParam1, (size_t)lParam2);
 
 	case ICM_COMPRESS_QUERY:
-		LOG_INFO("ICM_COMPRESS_QUERY");
-
 		{
 			BITMAPINFO* bmi = (BITMAPINFO*)lParam1;
 			if (ph->getImageSize(&bmi->bmiHeader) == -1)
@@ -200,32 +171,24 @@ LRESULT WINAPI DriverProc(DWORD_PTR dwDriverId, HDRVR hDriver, UINT uMsg, LONG l
 		}
 
 	case ICM_COMPRESS_BEGIN:
-		LOG_INFO("ICM_COMPRESS_BEGIN");
 		if (!ph->checkFormat((LPBITMAPINFO)lParam1))
 			return ICERR_BADFORMAT;
 
-		return ph->establishPipe();
+		return ph->establishPipe((LPBITMAPINFO)lParam1);
 
 	case ICM_COMPRESS_END:
 	{
-		LOG_INFO("ICM_COMPRESS_END");
-
 		return ph->closePipe();
 	}
 		
 	case ICM_COMPRESS_GET_FORMAT:
-		LOG_INFO("ICM_COMPRESS_GET_FORMAT");
-
 		return ph->getFormat((BITMAPINFO*)lParam1, (BITMAPINFO*)lParam2);
 
 	case ICM_COMPRESS_GET_SIZE:
-		LOG_INFO("ICM_COMPRESS_GET_SIZE");
-
 		//return ph->getSize((BITMAPINFO*)lParam1, (BITMAPINFO*)lParam2);
 		return LOG_SIZE;
 
 	case ICM_COMPRESS_FRAMES_INFO:
-		LOG_INFO("ICM_COMPRESS_FRAMES_INFO");
 
 		return ICERR_OK;
 
