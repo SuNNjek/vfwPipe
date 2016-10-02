@@ -23,11 +23,10 @@
 
 #pragma comment( lib, "Winmm.lib" )
 
+#include "version_tmp.h"
+
 #include <Windows.h>
 #include <Vfw.h>
-#include <stdio.h>
-#include <io.h>
-#include <cstdarg>
 #include <comdef.h>
 #include <string>
 #include <sstream>
@@ -35,10 +34,10 @@
 #define FOURCC_PIPE mmioFOURCC('P', 'I', 'P', 'E')
 #define FOURCC_VIDC mmioFOURCC('V', 'I', 'D', 'C')
 
-#define VFWPIPE_DEFAULT_CMD_ARGS L"-i pipe:0 -f rawvideo -pix_fmt rgb24 -vcodec libx264 \"D:\\test.mkv\""
+#define VFWPIPE_DEFAULT_CMD_ARGS L"-i pipe:0 -f rawvideo -pix_fmt rgb24 -vcodec libx264 \"[[output]]\""
 #define VFWPIPE_DEFAULT_ENCODER L"ffmpeg.exe"
 #define VFWPIPE_NAME L"vfwPipe"
-#define VFWPIPE_DESC L"vfwPipe v1.0.0"
+#define VFWPIPE_DESC VFWPIPE_NAME " " VFWPIPE_VERSION_STRING
 
 #define LOG_SIZE 2048
 #define BUFFER_SIZE 256
@@ -86,7 +85,7 @@ public:
 private:
 	HANDLE hProc = INVALID_HANDLE_VALUE;
 	HANDLE hThread = INVALID_HANDLE_VALUE;
-	HANDLE pipe = INVALID_HANDLE_VALUE;
+	HANDLE writePipe = INVALID_HANDLE_VALUE;
 
 	HANDLE f_out = INVALID_HANDLE_VALUE;
 	HANDLE f_err = INVALID_HANDLE_VALUE;

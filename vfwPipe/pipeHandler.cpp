@@ -40,11 +40,13 @@ pipeHandler::~pipeHandler()
 }
 
 void pipeHandler::aboutDlg(HWND parent) {
-	MessageBox(parent, L"vfwPipe v1.0.0 by SuNNjek (sunnerlp@gmail.com)", L"About vfwPipe", MB_OK | MB_ICONINFORMATION);
+	std::wostringstream stream;
+	stream << L"vfwPipe " << VFWPIPE_VERSION_STRING << L" by SuNNjek (sunnerlp@gmail.com)";
+	MessageBox(parent, stream.str().c_str(), L"About vfwPipe", MB_OK | MB_ICONINFORMATION);
 }
 
 void pipeHandler::configDlg(HWND parent) {
-	DialogBoxParamW(inst, MAKEINTRESOURCE(IDD_DIALOG1), parent, ::ConfigDialog, (LPARAM)this);
+	DialogBoxParam(inst, MAKEINTRESOURCE(IDD_CONFIG_DIALOG), parent, ::ConfigDialog, (LPARAM)this);
 }
 
 void pipeHandler::setToDefault()
@@ -72,26 +74,23 @@ INT_PTR CALLBACK pipeHandler::ConfigDialog(HWND hwndDlg, UINT uMsg, WPARAM wPara
 	case WM_COMMAND:
 		switch (LOWORD(wParam)) {
 		case IDOK:
-		{
-			GetDlgItemText(hwndDlg, cmdLineArgsTxt, this->settings->cmdLineArgs, 2048);
-			GetDlgItemText(hwndDlg, applicationPathTxt, this->settings->encoderPath, MAX_PATH);
-			GetDlgItemText(hwndDlg, outputPathTxt, this->settings->outputPath, MAX_PATH);
+			{
+				GetDlgItemText(hwndDlg, cmdLineArgsTxt, this->settings->cmdLineArgs, 2048);
+				GetDlgItemText(hwndDlg, applicationPathTxt, this->settings->encoderPath, MAX_PATH);
+				GetDlgItemText(hwndDlg, outputPathTxt, this->settings->outputPath, MAX_PATH);
 
-			UINT chckBoxState = IsDlgButtonChecked(hwndDlg, openInNewWndwBox);
-			if (chckBoxState == BST_CHECKED)
-				this->settings->openNewWindow = true;
-			else
-				this->settings->openNewWindow = false;
+				UINT chckBoxState = IsDlgButtonChecked(hwndDlg, openInNewWndwBox);
+				if (chckBoxState == BST_CHECKED)
+					this->settings->openNewWindow = true;
+				else
+					this->settings->openNewWindow = false;
 
-			EndDialog(hwndDlg, IDOK);
-		}
-		break;
+				EndDialog(hwndDlg, IDOK);
+			}
+			return TRUE;
 		case IDCANCEL:
 			EndDialog(hwndDlg, IDCANCEL);
-			break;
-		case IDHELP:
-			MessageBox(hwndDlg, L"The command line automatically replaces [[width]], [[height]] and [[output]]\nwith the video width and height (in pixels) and the output file path", L"Command line help", MB_OK | MB_ICONQUESTION);
-			break;
+			return TRUE;
 		case EncoderChooserBtn:
 			{
 				wchar_t tmpFilepath[MAX_PATH];
@@ -115,7 +114,7 @@ INT_PTR CALLBACK pipeHandler::ConfigDialog(HWND hwndDlg, UINT uMsg, WPARAM wPara
 					SetDlgItemText(hwndDlg, applicationPathTxt, tmpFilepath);
 				}
 			}
-			break;
+			return TRUE;
 		case outfileBtn:
 			{
 				wchar_t tmpFilepath[MAX_PATH];
@@ -139,14 +138,12 @@ INT_PTR CALLBACK pipeHandler::ConfigDialog(HWND hwndDlg, UINT uMsg, WPARAM wPara
 					SetDlgItemText(hwndDlg, outputPathTxt, tmpFilepath);
 				}
 			}
-			break;
+			return TRUE;
 		}
-		break;
+		return FALSE;
 	}
 	return FALSE;
 }
-
-
 
 LRESULT pipeHandler::sendToStdout(ICCOMPRESS * icc, size_t icc_size)
 {
@@ -162,7 +159,7 @@ LRESULT pipeHandler::sendToStdout(ICCOMPRESS * icc, size_t icc_size)
 
 	DWORD bytesWritten;
 
-	if (!WriteFile(this->pipe, newInput, size, &bytesWritten, NULL)) {
+	if (!WriteFile(this->writePipe, newInput, size, &bytesWritten, NULL)) {
 		DWORD dwErr = 0;
 		if (!GetExitCodeProcess(this->hProc, &dwErr) || dwErr != STILL_ACTIVE) {
 			dwErr = GetLastError();
@@ -209,13 +206,11 @@ LRESULT pipeHandler::establishPipe(LPBITMAPINFO info)
 		sa.bInheritHandle = TRUE;
 		sa.lpSecurityDescriptor = NULL;
 
-		if (!CreatePipe(&c_in, &this->pipe, &sa, 10 * 1024 * 1024)) {
+		if (!CreatePipe(&c_in, &this->writePipe, &sa, 10 * 1024 * 1024))
 			throw L"Couldn't create input pipe";
-		}
 
-		if (!SetHandleInformation(this->pipe, HANDLE_FLAG_INHERIT, 0)) {
+		if (!SetHandleInformation(this->writePipe, HANDLE_FLAG_INHERIT, 0))
 			throw L"Couldn't set input handle information";
-		}
 
 		this->f_out = CreateFile(Helper::replaceEnvVars(L"%USERPROFILE%\\vfwPipeStdOut.txt").c_str(),
 			FILE_APPEND_DATA,
@@ -286,9 +281,9 @@ LRESULT pipeHandler::establishPipe(LPBITMAPINFO info)
 
 		return ICERR_OK;
 	}
-	catch (std::wstring msg) {
-		if (this->pipe != INVALID_HANDLE_VALUE)
-			CloseHandle(this->pipe);
+	catch (std::wstring msg) {	
+		if (this->writePipe != INVALID_HANDLE_VALUE)
+			CloseHandle(this->writePipe);
 
 		if (this->f_out != INVALID_HANDLE_VALUE)
 			CloseHandle(this->f_out);
@@ -324,7 +319,7 @@ LRESULT pipeHandler::getFormat(BITMAPINFO * in, BITMAPINFO * out)
 	std::ostringstream strStream;
 	strStream << "BitCount: " << in->bmiHeader.biBitCount
 		<< " Dimensions: " << in->bmiHeader.biWidth << "x" << in->bmiHeader.biHeight;
-	Logger::Write(Logger::INFO, strStream.str());
+	LOG_DEBUG(strStream.str());
 #endif
 
 	return ICERR_OK;
@@ -338,8 +333,8 @@ LRESULT pipeHandler::getSize(BITMAPINFO * in, BITMAPINFO * out)
 LRESULT pipeHandler::closePipe()
 {
 	try {
-		if(this->pipe != INVALID_HANDLE_VALUE)
-			CloseHandle(this->pipe);
+		if(this->writePipe != INVALID_HANDLE_VALUE)
+			CloseHandle(this->writePipe);
 		if(this->f_out != INVALID_HANDLE_VALUE)
 			CloseHandle(this->f_out);
 		if(this->f_err != INVALID_HANDLE_VALUE)
@@ -357,7 +352,7 @@ LRESULT pipeHandler::closePipe()
 			CloseHandle(this->hThread);
 		}
 	
-		this->pipe = INVALID_HANDLE_VALUE;
+		this->writePipe = INVALID_HANDLE_VALUE;
 		this->hProc = this->hThread = INVALID_HANDLE_VALUE;
 	}
 	catch (...) {

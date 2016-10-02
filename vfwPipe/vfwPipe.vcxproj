@@ -163,6 +163,8 @@
     <ClInclude Include="Logger.h" />
     <ClInclude Include="pipeHandler.h" />
     <ClInclude Include="resource.h" />
+    <ClInclude Include="version.h" />
+    <ClInclude Include="version_tmp.h" />
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="vfwPipe.rc" />
@@ -171,6 +173,12 @@
     <None Include="Source.def" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
+  <Import Project="$(SolutionDir)\Build\Version.targets" />
   <ImportGroup Label="ExtensionTargets">
   </ImportGroup>
+  <ProjectExtensions>
+    <VisualStudio>
+      <UserProperties RESOURCE_FILE="vfwPipe.rc" />
+    </VisualStudio>
+  </ProjectExtensions>
 </Project>

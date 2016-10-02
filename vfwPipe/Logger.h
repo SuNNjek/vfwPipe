@@ -10,8 +10,11 @@
 
 #include "Helper.h"
 
-#define LOG_INFO(msg) Logger::Write(Logger::INFO, msg)
-#define LOG_ERROR(msg) Logger::Write(Logger::ERR, msg)
+#define LOG_DEBUG(msg) Logger::Write(Logger::DEBUG, msg, "", 0)
+#define LOG_INFO(msg) Logger::Write(Logger::INFO, msg, "", 0)
+#define LOG_WARN(msg) Logger::Write(Logger::WARNING, msg, __FILE__, __LINE__)
+#define LOG_ERROR(msg) Logger::Write(Logger::ERR, msg, __FILE__, __LINE__)
+
 #define LOG_STOP Logger::Stop()
 
 #ifdef _DEBUG
@@ -28,7 +31,6 @@ public:
 	enum Priority
 	{
 		DEBUG,
-		CONFIG,
 		INFO,
 		WARNING,
 		ERR
@@ -41,7 +43,7 @@ public:
 	static void Stop();
 
 	// write message
-	static void Write(Priority priority, const std::string& message);
+	static void Write(Priority priority, const std::string& message, const std::string& file, int line);
 
 private:
 	// Logger adheres to the singleton design pattern, hence the private

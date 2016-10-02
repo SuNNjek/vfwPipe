@@ -28,10 +28,6 @@
 HINSTANCE inst;
 
 BOOL APIENTRY DllMain(HANDLE hModule, DWORD  ul_reason_for_call, LPVOID lpReserved) {
-#ifdef _DEBUG
-	std::ostringstream strStream;
-#endif
-
 	switch (ul_reason_for_call)
 	{
 	case DLL_PROCESS_ATTACH:
@@ -189,7 +185,6 @@ LRESULT WINAPI DriverProc(DWORD_PTR dwDriverId, HDRVR hDriver, UINT uMsg, LONG l
 		return LOG_SIZE;
 
 	case ICM_COMPRESS_FRAMES_INFO:
-
 		return ICERR_OK;
 
 	case ICM_DECOMPRESS:

@@ -7,7 +7,6 @@
 const std::string Logger::PRIORITY_NAMES[] =
 {
 	"DEBUG",
-	"CONFIG",
 	"INFO",
 	"WARNING",
 	"ERROR"
@@ -41,7 +40,7 @@ void Logger::Stop()
 	}
 }
 
-void Logger::Write(Priority priority, const std::string& message)
+void Logger::Write(Priority priority, const std::string& message, const std::string& file, int line)
 {
 	if (instance.active && priority >= instance.minPriority)
 	{
@@ -57,10 +56,14 @@ void Logger::Write(Priority priority, const std::string& message)
 		stream << "["
 			<< std::put_time(&time, "%d.%m.%Y %T")
 			<< "]["
-			<< PRIORITY_NAMES[priority] 
+			<< PRIORITY_NAMES[priority]
 			<< "]"
 			<< ": "
-			<< message
-			<< std::endl;
+			<< message;
+
+		if (file != "")
+			stream << " (at " << file << ":" << line << ")";
+
+		stream << std::endl;
 	}
 }
