@@ -30,11 +30,23 @@
 			<Output TaskParameter="ConsoleOutput" PropertyName="vfwPipeVersion" />
 		</Exec>
 		
+		<Exec
+			Command='git rev-parse --short HEAD'
+			WorkingDirectory="$(SolutionDir)"
+			ConsoleToMSBuild="true">
+			<Output TaskParameter="ConsoleOutput" PropertyName="commitHash" />
+		</Exec>
+		
 		<Message Text="Transforming version.h..." Importance="high" />
 		<ReplaceFileText
 			InputFilename="$(SolutionDir)\vfwPipe\version.h"
 			OutputFilename="$(SolutionDir)\vfwPipe\version_tmp.h"
 			MatchExpression="\$version\$"
-			ReplacementText='$(vfwPipeVersion)'/>
+			ReplacementText='$(vfwPipeVersion)' />
+		<ReplaceFileText
+			InputFilename="$(SolutionDir)\vfwPipe\version_tmp.h"
+			OutputFilename="$(SolutionDir)\vfwPipe\version_tmp.h"
+			MatchExpression="\$hash\$"
+			ReplacementText="$(commitHash)" />
 	</Target>
 </Project>

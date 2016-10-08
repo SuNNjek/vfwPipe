@@ -41,7 +41,7 @@ pipeHandler::~pipeHandler()
 
 void pipeHandler::aboutDlg(HWND parent) {
 	std::wostringstream stream;
-	stream << L"vfwPipe " << VFWPIPE_VERSION_STRING << L" by SuNNjek (sunnerlp@gmail.com)";
+	stream << L"vfwPipe version " << VFWPIPE_VERSION_STRING_WITH_HASH << L"\nBy " << VFWPIPE_AUTHOR_STRING;
 	MessageBox(parent, stream.str().c_str(), L"About vfwPipe", MB_OK | MB_ICONINFORMATION);
 }
 
@@ -431,11 +431,11 @@ void pipeHandler::replaceSubstring(std::wstring &input, std::wstring toReplace, 
 }
 
 INT_PTR CALLBACK ConfigDialog(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM lParam) {
-	pipeHandler *ph = (pipeHandler*)GetWindowLong(hwndDlg, DWL_USER);
+	pipeHandler *ph = (pipeHandler*)GetWindowLongPtr(hwndDlg, DWLP_USER);
 	
 	if (uMsg == WM_INITDIALOG) {
 		ph = (pipeHandler*)lParam;
-		SetWindowLong(hwndDlg, DWLP_USER, (LONG)ph);
+		SetWindowLongPtr(hwndDlg, DWLP_USER, (LONG_PTR)ph);
 	}
 	if (ph != NULL)
 		return ph->ConfigDialog(hwndDlg, uMsg, wParam, lParam);

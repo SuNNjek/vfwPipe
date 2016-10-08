@@ -39,7 +39,7 @@ BOOL APIENTRY DllMain(HANDLE hModule, DWORD  ul_reason_for_call, LPVOID lpReserv
 	return TRUE;
 }
 
-LRESULT WINAPI DriverProc(DWORD_PTR dwDriverId, HDRVR hDriver, UINT uMsg, LONG lParam1, LONG lParam2)
+LRESULT WINAPI DriverProc(DWORD_PTR dwDriverId, HDRVR hDriver, UINT uMsg, LPARAM lParam1, LPARAM lParam2)
 {
 	pipeHandler* ph = (pipeHandler*)dwDriverId;
 
