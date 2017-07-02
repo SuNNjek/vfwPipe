@@ -55,7 +55,8 @@ void pipeHandler::setToDefault()
 
 	wcscpy_s(settings->cmdLineArgs, VFWPIPE_DEFAULT_CMD_ARGS);
 	wcscpy_s(settings->encoderPath, VFWPIPE_DEFAULT_ENCODER);
-	wcscpy_s(settings->encoderPath, L"output.mkv");
+	wcscpy_s(settings->encoderPath, L"ffmpeg.exe");
+	wcscpy_s(settings->outputPath, L"output.mkv");
 	settings->openNewWindow = true;
 }
 

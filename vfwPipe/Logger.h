@@ -53,9 +53,9 @@ private:
 	Logger& operator = (const Logger& logger) {}
 
 	// private instance data
-	bool        active;
-	std::ofstream    fileStream;
-	Priority    minPriority;
+	bool			active;
+	std::ofstream	fileStream;
+	Priority		minPriority;
 
 	// names describing the items in enum Priority
 	static const std::string PRIORITY_NAMES[];
